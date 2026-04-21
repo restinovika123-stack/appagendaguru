@@ -12,6 +12,17 @@ const HOST = process.env.HOST || '127.0.0.1';
 const DATA_DIR = path.join(ROOT_DIR, 'backend-data');
 const SQLITE_FILE = path.join(DATA_DIR, 'agendaguru.sqlite');
 
+let isDbInitialized = false;
+async function ensureDbInitialized() {
+  if (isDbInitialized) return;
+  // Initialize Schema
+  const statements = schemaSql.split(';').filter(s => s.trim());
+  for (const sql of statements) {
+    await client.execute(sql);
+  }
+  isDbInitialized = true;
+}
+
 // Database Connection
 const useTurso = process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN;
 
@@ -451,6 +462,18 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(ROOT_DIR));
 
+// Database Readiness Middleware
+app.use(async (req, res, next) => {
+  if (req.path === '/api/health') return next();
+  try {
+    await ensureDbInitialized();
+    next();
+  } catch (err) {
+    console.error('Database Initialization Error:', err);
+    res.status(500).json({ error: 'Database initialization failed' });
+  }
+});
+
 // API Routes
 app.get('/api/health', (req, res) => res.json({ ok: true, engine: 'sqlite' }));
 
@@ -539,26 +562,27 @@ app.put('/api/users/:userId/profile', async (req, res) => {
   res.json({ user: sanitizeUser(updated.rows[0]) });
 });
 
-// Init and Listen
-(async () => {
-  try {
-    // Ensure data directory exists for local fallback
-    if (!useTurso && !fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
+// Init and Start
+module.exports = app;
 
-    // Initialize Schema
-    const statements = schemaSql.split(';').filter(s => s.trim());
-    for (const sql of statements) {
-      await client.execute(sql);
+if (require.main === module) {
+  async function startServer() {
+    try {
+      // Ensure data directory exists for local fallback
+      if (!useTurso && !fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+      }
+
+      await ensureDbInitialized();
+      
+      app.listen(PORT, HOST, () => {
+        console.log(`AgendaGuru Backend (Express) running at http://${HOST}:${PORT}`);
+        console.log(`Using Database: ${useTurso ? 'Turso DB (Production)' : 'Local SQLite'}`);
+      });
+    } catch (err) {
+      console.error('Failed to start server:', err);
+      process.exit(1);
     }
-    
-    app.listen(PORT, HOST, () => {
-      console.log(`AgendaGuru Backend (Express) running at http://${HOST}:${PORT}`);
-      console.log(`Using Database: ${useTurso ? 'Turso DB (Production)' : 'Local SQLite'}`);
-    });
-  } catch (err) {
-    console.error('Failed to start server:', err);
-    process.exit(1);
   }
-})();
+  startServer();
+}
