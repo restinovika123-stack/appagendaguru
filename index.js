@@ -3,7 +3,7 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { createClient } = require('@libsql/client');
+const { createClient } = require('@libsql/client/web');
 require('dotenv').config();
 
 const ROOT_DIR = __dirname;
