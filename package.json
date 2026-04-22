@@ -13,7 +13,6 @@
   "dependencies": {
     "@libsql/client": "^0.17.2",
     "better-auth": "^1.6.5",
-    "better-sqlite3": "^12.9.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
