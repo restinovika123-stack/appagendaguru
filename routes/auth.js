@@ -16,10 +16,8 @@ router.post('/login', async (req, res) => {
             }
         });
 
-        // session.user is the Better Auth user
         const [userData] = await db.select().from(schema.user).where(eq(schema.user.email, loginId)).limit(1);
         
-        // Fetch DB data
         const { db: userDb } = await fetch(`${req.protocol}://${req.get('host')}/api/users/${encodeURIComponent(userData.id)}/db`).then(r => r.json());
 
         res.json({
@@ -46,7 +44,7 @@ router.post('/register', async (req, res) => {
                 email: loginId,
                 password: password,
                 name: fullName,
-                school: school // This works because of additionalFields in lib/auth.js
+                school: school
             }
         });
 
@@ -69,16 +67,37 @@ router.post('/register', async (req, res) => {
     }
 });
 
+// Better Auth native handler — convert Express req → Web Request → Web Response → Express res
 router.all('/*', async (req, res) => {
-    const response = await auth.handler(req);
-    // Better Auth handler returns a Response object (Web Standard)
-    // We need to convert it to Express response
-    res.status(response.status);
-    response.headers.forEach((value, key) => {
-        res.setHeader(key, value);
-    });
-    const body = await response.text();
-    res.send(body);
+    try {
+        const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+        const host = req.headers['x-forwarded-host'] || req.get('host');
+        const url = `${protocol}://${host}${req.originalUrl}`;
+
+        const headers = new Headers();
+        for (const [key, value] of Object.entries(req.headers)) {
+            if (value) headers.set(key, Array.isArray(value) ? value.join(', ') : value);
+        }
+
+        const hasBody = req.method !== 'GET' && req.method !== 'HEAD';
+        const body = hasBody ? JSON.stringify(req.body) : undefined;
+
+        const webRequest = new Request(url, {
+            method: req.method,
+            headers,
+            body
+        });
+
+        const response = await auth.handler(webRequest);
+
+        res.status(response.status);
+        response.headers.forEach((value, key) => res.setHeader(key, value));
+        const text = await response.text();
+        res.send(text);
+    } catch (err) {
+        console.error('Auth handler error:', err);
+        res.status(500).json({ error: 'Auth handler failed', detail: err.message });
+    }
 });
 
 module.exports = router;
