@@ -6,15 +6,23 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node index.js",
-    "build": "echo 'Building AgendaGuru... (Static site, no compilation needed)'"
+    "build": "npx drizzle-kit generate",
+    "db:push": "npx drizzle-kit push",
+    "db:studio": "npx drizzle-kit studio"
   },
   "dependencies": {
     "@libsql/client": "^0.17.2",
+    "better-auth": "^1.6.5",
+    "better-sqlite3": "^12.9.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
     "express": "^5.2.1"
   },
   "engines": {
     "node": "20.x"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.10"
   }
 }
