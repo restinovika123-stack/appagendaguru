@@ -1,12 +1,6 @@
 {
   "version": 2,
   "installCommand": "npm install --omit=dev",
-  "functions": {
-    "index.js": {
-      "memory": 512,
-      "maxDuration": 30
-    }
-  },
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.js" }
   ]

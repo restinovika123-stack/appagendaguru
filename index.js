@@ -25,6 +25,12 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Global error handler — returns JSON so we can debug 500s on Vercel
+app.use((err, req, res, next) => {
+    console.error('Unhandled error:', err);
+    res.status(500).json({ error: err.message, stack: process.env.NODE_ENV !== 'production' ? err.stack : undefined });
+});
+
 // Start Server
 if (process.env.NODE_ENV !== 'production') {
     app.listen(PORT, HOST, () => {
