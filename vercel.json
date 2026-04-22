@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "installCommand": "npm install --omit=dev",
   "functions": {
     "index.js": {
       "memory": 512,
