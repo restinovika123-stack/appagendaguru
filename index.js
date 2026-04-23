@@ -8,6 +8,7 @@ require('dotenv').config();
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || '127.0.0.1';
+app.set('trust proxy', 1);
 
 // Middleware
 app.use(cors());
@@ -18,10 +19,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api/auth', authRouter);
 app.use('/api', apiRouter);
 
-// Fallback for SPA (if index.html handles routing)
-app.get('*', (req, res) => {
-    // Only handle if not an API route
-    if (req.path.startsWith('/api')) return res.status(404).json({ error: 'Not found' });
+// Fallback for SPA (Express 5-safe)
+app.use((req, res, next) => {
+    if (req.method !== 'GET') return next();
+    if (req.path.startsWith('/api')) return next();
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 

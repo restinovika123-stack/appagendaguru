@@ -1,14 +1,17 @@
 const express = require('express');
 const { auth } = require('../lib/auth');
-const { db } = require('../db');
+const { db, dbReady } = require('../db');
 const schema = require('../db/schema');
 const { eq } = require('drizzle-orm');
+const { loadUserDb } = require('../lib/user-db');
 const router = express.Router();
 
 // Compatibility Wrapper for Login
 router.post('/login', async (req, res) => {
     const { loginId, password } = req.body;
     try {
+        await dbReady;
+
         const session = await auth.api.signInEmail({
             body: {
                 email: loginId,
@@ -17,8 +20,7 @@ router.post('/login', async (req, res) => {
         });
 
         const [userData] = await db.select().from(schema.user).where(eq(schema.user.email, loginId)).limit(1);
-        
-        const { db: userDb } = await fetch(`${req.protocol}://${req.get('host')}/api/users/${encodeURIComponent(userData.id)}/db`).then(r => r.json());
+        const userDb = await loadUserDb(userData.id);
 
         res.json({
             user: {
@@ -39,6 +41,8 @@ router.post('/login', async (req, res) => {
 router.post('/register', async (req, res) => {
     const { fullName, school, loginId, password } = req.body;
     try {
+        await dbReady;
+
         const user = await auth.api.signUpEmail({
             body: {
                 email: loginId,
@@ -68,8 +72,10 @@ router.post('/register', async (req, res) => {
 });
 
 // Better Auth native handler — convert Express req → Web Request → Web Response → Express res
-router.all('/*', async (req, res) => {
+router.use(async (req, res) => {
     try {
+        await dbReady;
+
         const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
         const host = req.headers['x-forwarded-host'] || req.get('host');
         const url = `${protocol}://${host}${req.originalUrl}`;
