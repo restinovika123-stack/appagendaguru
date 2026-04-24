@@ -1,5 +1,5 @@
 const express = require('express');
-const { db, dbReady } = require('../db');
+const { db, dbReady, databaseMode } = require('../db');
 const { eq } = require('drizzle-orm');
 const schema = require('../db/schema');
 const { loadUserDb, syncUserDb } = require('../lib/user-db');
@@ -9,7 +9,7 @@ const router = express.Router();
 router.get('/health', async (req, res) => {
     try {
         await dbReady;
-        res.json({ ok: true, engine: 'drizzle', database: process.env.TURSO_DATABASE_URL ? 'turso' : 'sqlite' });
+        res.json({ ok: true, engine: 'drizzle', database: databaseMode });
     } catch (err) {
         res.status(500).json({ ok: false, error: err.message });
     }
